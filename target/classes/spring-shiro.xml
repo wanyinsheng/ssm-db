@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xmlns:util="http://www.springframework.org/schema/util"
+    xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+    xsi:schemaLocation="  
+       http://www.springframework.org/schema/beans   
+       http://www.springframework.org/schema/beans/spring-beans-4.3.xsd  
+       http://www.springframework.org/schema/mvc   
+       http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd   
+       http://www.springframework.org/schema/tx   
+       http://www.springframework.org/schema/tx/spring-tx-4.3.xsd   
+       http://www.springframework.org/schema/aop 
+       http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+       http://www.springframework.org/schema/util 
+       http://www.springframework.org/schema/util/spring-util-4.3.xsd
+       http://www.springframework.org/schema/data/jpa 
+       http://www.springframework.org/schema/data/jpa/spring-jpa-1.3.xsd
+      http://www.springframework.org/schema/context
+      http://www.springframework.org/schema/context/spring-context-4.3.xsd"
+    default-lazy-init="true">
+    <!-- 配置securityManager对象,shiro核心 -->
+    <bean id="securityManager"
+        class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <property name="Realm" ref="shiroUserRealm"></property>
+        <property name="CacheManager" ref="cacheManager" />
+        <property name="RememberMeManager"
+            ref="rememberMeManager" />
+        <property name="sessionManager" ref="sessionManager" />
+    </bean>
+    <!-- 配置 ShiroFilterFactoryBean对象 -->
+    <bean id="shiroFilterFactory"
+        class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+        <property name="SecurityManager" ref="securityManager" />
+        <!-- 拦截之后条转到登录页面 -->
+        <property name="LoginUrl" value="/doLoginUI.do" />
+        <!-- 设置请求过滤规则 -->
+        <property name="filterChainDefinitionMap">
+            <map>
+                <!-- 配置匿名访问,认证访问资源 -->
+                <entry key="/bower_components/**" value="anon" />
+                <entry key="/build/**" value="anon" /><!-- anon表示允许匿名访问 -->
+                <entry key="/dist/**" value="anon" />
+                <entry key="/plugins/**" value="anon" />
+                <!-- 登录 -->
+                <entry key="/user/doLogin.do" value="anon" />
+                <!-- 退出 -->
+                <entry key="/doLogout.do" value="logout" />
+                <!-- 除了上面的资源,其它的路径都要进行认证 -->
+                <!-- <entry key="/**" value="authc" /> --><!-- 必须认证 -->
+                <entry key="/**" value="user" />
+                <!--authc 必须认证,假如添加了记住我功能以后需要设置为user -->
+            </map>
+        </property>
+    </bean>
+    <!-- 配置bean对象的生命周期管理 -->
+    <bean id="lifecycleBeanPostProcessor"
+        class="org.apache.shiro.spring.LifecycleBeanPostProcessor">
+    </bean>
+    <!-- 通过此配置要为目标业务对象创建代理对象 -->
+    <bean
+        class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"
+        depends-on="lifecycleBeanPostProcessor">
+        <property name="ProxyTargetClass" value="true"></property>
+    </bean>
+
+
+    <!-- 授权属性的Advisor配置 -->
+    <bean
+        class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+        <property name="SecurityManager" ref="securityManager" />
+    </bean>
+    <!-- 默认缓存的配置 -->
+    <bean id="cacheManager"
+        class="org.apache.shiro.cache.MemoryConstrainedCacheManager" />
+    <!-- 设置cookie缓存 -->
+    <bean id="rememberMeCookie"
+        class="org.apache.shiro.web.servlet.SimpleCookie">
+        <constructor-arg value="rememberMe" /><!-- 构造注入 -->
+        <!-- 7天,采用spring el表达式来计算，方便修改 -->
+        <property name="maxAge" value="#{7 * 24 * 60 * 60}" />
+    </bean>
+    <!-- 将cookie交给cookiemanager -->
+    <bean id="rememberMeManager"
+        class="org.apache.shiro.web.mgt.CookieRememberMeManager">
+        <property name="cookie" ref="rememberMeCookie"></property>
+    </bean>
+    <!-- 用户登录成功会将用户信息写入到会话对象中,其默认时长为30分钟 -->
+    <!-- shiro结合Session会话管理器 start -->
+    <bean id="sessionManager"
+        class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager">
+        <!-- session的失效时长，单位毫秒 1小时: 3600000, itzixi站点设置以 6小时 为主：21600000 -->
+        <!-- 设置全局会话超时时间，默认30分钟，即如果30分钟内没有访问会话将过期 1800000 -->
+        <property name="globalSessionTimeout" value="3000000" />
+        <!-- 删除失效的session -->
+        <property name="deleteInvalidSessions" value="true" />
+        <!-- 是否开启会话验证器，默认是开启的 -->
+        <property name="sessionValidationSchedulerEnabled"
+            value="true" />
+    </bean>
+    <aop:aspectj-autoproxy
+        proxy-target-class="false"></aop:aspectj-autoproxy>
+</beans>
